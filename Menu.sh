@@ -30,6 +30,8 @@ display_main_menu() {
 
 create_database(){
     echo -e "${CYAN}--- Creating Database ---${NC}"
+
+  
     read -p "Enter username: " username
     read -s -p "Enter password: " password
     echo ""
@@ -39,22 +41,52 @@ create_database(){
     
     if [ "$username" != "$VALID_USERNAME" ] || [ "$password" != "$VALID_PASSWORD" ]; then
         echo -e "${RED}Invalid username or password. Access denied.${NC}"
-         read -p "Press [Enter] to return to the menu..."
-       return 
-    fi
-
-    read -p "Enter the name of the new database: " db_name
-
-    if [ -d "$db_name" ]; then
-        echo -e "${RED}Database '$db_name' already exists.${NC}"
         read -p "Press [Enter] to return to the menu..."
         return
     fi
 
-    mkdir "$db_name"
+    
+    read -p "Enter the name of the new database: " db_name
+
+   
+    if [[ ! "$db_name" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+        echo -e "${RED}Invalid database name. Only alphanumeric characters, hyphens, and underscores are allowed.${NC}"
+        read -p "Press [Enter] to return to the menu..."
+        return
+    fi
+
+   
+    read -p "Enter the directory to store the database (or press Enter to use current): " db_directory
+    db_directory="${db_directory:-.}"  
+
+    if [ ! -d "$db_directory" ]; then
+        echo -e "${RED}Directory '$db_directory' does not exist. Please provide a valid directory.${NC}"
+        read -p "Press [Enter] to return to the menu..."
+        return
+    fi
+
+    if [ -d "$db_directory/$db_name" ]; then
+        echo -e "${RED}Database '$db_name' already exists in the specified directory.${NC}"
+        read -p "Would you like to overwrite it? (y/n): " overwrite_choice
+        if [ "$overwrite_choice" != "y" ]; then
+            echo -e "${YELLOW}Database creation cancelled.${NC}"
+            read -p "Press [Enter] to return to the menu..."
+            return
+        fi
+        rm -rf "$db_directory/$db_name"
+        echo -e "${YELLOW}Existing database '$db_name' has been removed.${NC}"
+    fi
+
+   
+    mkdir "$db_directory/$db_name"
     
     if [ $? -eq 0 ]; then
-        echo -e "${GREEN}Database '$db_name' created successfully!${NC}"
+        echo -e "${GREEN}Database '$db_name' created successfully in '$db_directory'.${NC}"
+        
+     
+        echo "Database created on $(date)" > "$db_directory/$db_name/db_metadata.txt"
+        echo -e "${GREEN}Metadata file created: $db_directory/$db_name/db_metadata.txt${NC}"
+        
         read -p "Press [Enter] to return to the menu..."
     else
         echo -e "${RED}Failed to create the database. Please try again.${NC}"
@@ -70,9 +102,20 @@ list_database(){
 	read -p "Press [Enter] to return to the menu..."
 }
 
-connect_database(){ 
-    echo "Connecting to database..." 
-    # Add your connection logic here
+connect_database() {
+    echo -e "${CYAN}--- Connecting to Database ---${NC}"
+    read -p "Enter the name of the database to connect to: " db_name
+    if [ -d "$db_name" ]; then
+        echo -e "${GREEN}Successfully connected to database '$db_name'.${NC}"
+        if [ -f "$db_name/db_metadata.txt" ]; then
+            cat "$db_name/db_metadata.txt"
+        else
+            echo -e "${YELLOW}No metadata file found for this database.${NC}"
+        fi
+    else
+        echo -e "${RED}Database '$db_name' does not exist.${NC}"
+    fi
+    read -p "Press [Enter] to return to the menu..."
 }
 
 drop_database(){
