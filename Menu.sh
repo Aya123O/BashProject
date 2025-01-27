@@ -64,9 +64,10 @@ create_database(){
     echo ""
 }
 
-list_database(){ 
-    echo -e "${CYAN}--- Listing Databases ---${NC}"
-    # This is a placeholder; you can list actual directories or databases if applicable.
+list_database(){
+	echo -e "${CYAN}--- Listing Databases ---${NC}"
+	[ "$(ls -A -d)" ] && ls -d */ 2>/dev/null || echo -e "${RED}No Databases Found.${NC}"
+	read -p "Press [Enter] to return to the menu..."
 }
 
 connect_database(){ 
