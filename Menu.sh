@@ -102,9 +102,20 @@ list_database(){
     # This is a placeholder; you can list actual directories or databases if applicable.
 }
 
-connect_database(){ 
-    echo "Connecting to database..." 
-    # Add your connection logic here
+connect_database() {
+    echo -e "${CYAN}--- Connecting to Database ---${NC}"
+    read -p "Enter the name of the database to connect to: " db_name
+    if [ -d "$db_name" ]; then
+        echo -e "${GREEN}Successfully connected to database '$db_name'.${NC}"
+        if [ -f "$db_name/db_metadata.txt" ]; then
+            cat "$db_name/db_metadata.txt"
+        else
+            echo -e "${YELLOW}No metadata file found for this database.${NC}"
+        fi
+    else
+        echo -e "${RED}Database '$db_name' does not exist.${NC}"
+    fi
+    read -p "Press [Enter] to return to the menu..."
 }
 
 drop_database(){ 
