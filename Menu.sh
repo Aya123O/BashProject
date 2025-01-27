@@ -96,10 +96,10 @@ create_database(){
     echo ""
 }
 
-
-list_database(){ 
-    echo -e "${CYAN}--- Listing Databases ---${NC}"
-    # This is a placeholder; you can list actual directories or databases if applicable.
+list_database(){
+	echo -e "${CYAN}--- Listing Databases ---${NC}"
+	[ "$(ls -A -d)" ] && ls -d */ 2>/dev/null || echo -e "${RED}No Databases Found.${NC}"
+	read -p "Press [Enter] to return to the menu..."
 }
 
 connect_database() {
@@ -118,8 +118,33 @@ connect_database() {
     read -p "Press [Enter] to return to the menu..."
 }
 
-drop_database(){ 
-    echo "Dropping database..." 
+drop_database(){
+    #for loop 3 times to input a correct name!!
+    read -p "Enter the name of the database you want to drop: " name
+    if [ -d $name ]
+    then
+	read -p "Are you sure you want to permanently delete the database '$name'? (yes/no):" check
+	if [[ "yes" =~ $check ]]
+	then
+		flag=0
+		rm -r $name
+		echo -e "${GREEN}Database '$db_name' dropped successfully!${NC}"
+	elif [[ "no" =~ $check ]]
+	then
+	        read -p "Press [Enter] to return to the menu..."
+		flag=1
+	else
+	  	echo -e "${RED}Error: Please enter yes/no.${NC}"
+	fi
+    else
+	flag=0
+	echo -e "${RED}Error: No database found with the specified name. Please enter a valid database name.${NC}"
+    fi
+    if [[ $flag == 0 ]]
+    then
+    	read -p "Press [Enter] to return to the menu..."
+    fi
+    #echo "Dropping database..." 
     # Add your drop logic here
 }
 
