@@ -27,6 +27,64 @@ display_main_menu() {
     echo -e "${BOLD}${RED}➤ 0. Exit${NC}" 
     echo ""
 }
+display_table_menu(){
+while true ;do 
+
+    clear  
+
+    echo -e "${BG_GREEN}${WHITE}==========================================================${NC}"
+    echo -e "${BOLD}${CYAN}           Welcome to the Table Menu${NC}"
+    echo -e "${BG_GREEN}${WHITE}==========================================================${NC}"
+    echo ""
+
+    echo -e "${BOLD}${YELLOW}➤ 1. Create Table${NC}"
+    echo -e "${BOLD}${YELLOW}➤ 2. List Tables${NC}"
+    echo -e "${BOLD}${YELLOW}➤ 3. Insert into Table${NC}"
+    echo -e "${BOLD}${YELLOW}➤ 4. Drop table${NC}"
+    echo -e "${BOLD}${YELLOW}➤ 5. Update Table${NC}"  # New option for updating table
+    echo -e "${BOLD}${CYAN}➤ 6. Return to Main Menu${NC}"  # New option to return to main menu
+    echo -e "${BOLD}${RED}➤ 0. Exit${NC}" 
+    echo ""
+    read -p "Please choose an option: " choice
+
+        case $choice in
+            1)
+                # Create Table code here
+                echo "Creating table..."
+                ;;
+            2)
+                # List Tables code here
+                echo "Listing tables..."
+                ;;
+            3)
+                # Insert into Table code here
+                echo "Inserting into table..."
+                ;;
+            4)
+                
+                echo "Dropping table..."
+                ;;
+            5)
+               
+                echo "Updating table..."
+                ;;
+            6)   return  
+                ;;
+            0)
+                
+                echo "Exiting the program..."
+                exit 0
+                ;;
+            *)
+                echo "Invalid option, please try again."
+                ;;
+        esac
+
+        
+        read -p "Press any key to continue..." -n1 -s
+    done
+
+}
 
 create_database(){
     echo -e "${CYAN}--- Creating Database ---${NC}"
@@ -112,6 +170,7 @@ connect_database() {
         else
             echo -e "${YELLOW}No metadata file found for this database.${NC}"
         fi
+      display_table_menu
     else
         echo -e "${RED}Database '$db_name' does not exist.${NC}"
     fi
