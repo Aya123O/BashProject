@@ -50,7 +50,36 @@ while true ;do
         case $choice in
             1)
                 # Create Table code here
-                echo "Creating table..."
+                #echo "Creating table..."
+    		echo -e "${CYAN}--- Creating Table ---${NC}"
+
+    		read -p "Enter the name of the new file: " file_name
+    		if [[ -z "$db_name/$file_name.txt" ]]
+    		then
+			echo -e "${RED}Error: Input cannot be empty or contain only spaces. Please provide a valid value.${NC}"
+    			#read -p "Press [Enter] to return to the menu..."
+    		elif [ -f $db_name/$file_name.txt ]
+		then
+			echo -e "${RED}File '$file_name' already exists in '$db_name'.${NC}"
+    			#read -p "Press [Enter] to return to the menu..."
+    		else
+			touch "$db_name/$file_name.txt"
+      		echo -e "${GREEN}File '$file_name' has been created successfully in '$db_name'! You can now proceed with the next steps.${NC}"
+			read -p "Please enter the value for the column that will serve as the primary key: " pkcolumn
+			echo -n "$pkcolumn(PK):">> "$db_name/$file_name.txt"
+			for ((i=0; i<5; i++))
+			do
+				read -p "Please enter the value for the column $((i+1)): " column
+				while [[ -z "${column}" ]]
+				do
+					echo -e "${RED}Error: Input cannot be empty or contain only spaces.${NC}"
+					read -p "Please provide a valid column name: " column
+	      		done
+			echo -n $column: >> "$db_name/$file_name.txt"
+      		done
+    		echo -e "${GREEN}Columns have been added successfully!${NC}"
+    		#read -p "Press [Enter] to return to the menu..."
+    		fi
                 ;;
             2)
                 # List Tables code here
