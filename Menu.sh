@@ -128,24 +128,18 @@ while true ;do
         fi
         ;;
     3)
-        echo -e "${CYAN}--- Listing Tables ---${NC}"
-        echo -e "${BG_GREEN}${WHITE}==========================================================${NC}"
-        table_files=$(ls $db_name/*.txt 2>/dev/null)
+            echo -e "${CYAN}--- Listing Tables ---${NC}"
+        echo -e "${BG_GREEN}${WHITE}=======================${NC}"
 
-        if [[ -z "$table_files" ]]; then
-            echo -e "${RED}No Tables Found.${NC}"
-        else
-            echo -e "${CYAN}Available Tables:${NC}"
-            for table in $table_files; do
+       
+        echo -e "${CYAN}Available Tables:${NC}"
+        for table in "$db_name"/*.txt; do
+
+    if [[ ! "$table" =~ metaData\.txt$ && ! "$table" =~ db_metadata\.txt$ ]]; then
                 table_name=$(basename "$table" .txt)
-                echo " - $table_name"
-            done
-        fi
-        read -p "Press [Enter] to return to the menu..."
-        ;;
-    4)
-        echo -e "${CYAN}--- Select Table ---${NC}"
-        echo -e "${BG_GREEN}${WHITE}==========================================================${NC}"
+                echo "$table_name"
+            fi
+        done
 
         read -p "Enter the name of the table to display data: " selected_table
 
@@ -160,6 +154,46 @@ while true ;do
             done < "$db_name/$selected_table.txt"
         fi
         ;;
+
+       
+    4)
+       echo -e "${CYAN}--- Select Table ---${NC}"
+    echo -e "${BG_GREEN}${WHITE}===================${NC}"
+
+    read -p "Enter the name of the table to display data: " selected_table
+
+    if [[ ! -f "$db_name/$selected_table.txt" ]]; then
+        echo -e "${RED}Table '$selected_table' does not exist.${NC}"
+    else
+        echo -e "${CYAN}Displaying Data for Table '$selected_table':${NC}"
+        header=$(head -n 1 "$db_name/$selected_table.metaData.txt" | cut -d: -f1 | tr '\n' ' ')
+        echo -e "Header: $header"
+
+        read -p "Do you want to search by 'id' or 'name'? " search_criteria
+
+        if [[ "$search_criteria" == "id" ]]; then
+            read -p "Enter the ID to search for: " search_value
+            found_row=$(grep -P "^$search_value:" "$db_name/$selected_table.txt")
+            
+            if [[ -z "$found_row" ]]; then
+                echo -e "${RED}No row found with ID '$search_value'.${NC}"
+            else
+                echo "$found_row" | tr ':' ' '
+            fi
+        elif [[ "$search_criteria" == "name" ]]; then
+            read -p "Enter the Name to search for: " search_value
+            found_row=$(grep -i ":$search_value:" "$db_name/$selected_table.txt")
+            
+            if [[ -z "$found_row" ]]; then
+                echo -e "${RED}No row found with Name '$search_value'.${NC}"
+            else
+                echo "$found_row" | tr ':' ' '
+            fi
+        else
+            echo -e "${RED}Invalid search criteria.${NC}"
+        fi
+    fi
+    ;;
     5)
         echo -e "${CYAN}--- Drop Table ---${NC}"
         echo -e "${BG_GREEN}${WHITE}==========================================================${NC}"
