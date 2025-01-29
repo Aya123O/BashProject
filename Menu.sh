@@ -49,8 +49,7 @@ while true ;do
 
         case $choice in
             1)
-                # Create Table code here
-                #echo "Creating table..."
+               # create a metadata file --> ID: int, Name: string
     		echo -e "${CYAN}--- Creating Table ---${NC}"
 
     		read -p "Enter the name of the new file: " file_name
@@ -62,12 +61,32 @@ while true ;do
 		then
 			echo -e "${RED}File '$file_name' already exists in '$db_name'.${NC}"
     			#read -p "Press [Enter] to return to the menu..."
-    		else
+			else
 			touch "$db_name/$file_name.txt"
+			touch "$db_name/$file_name.metaData.txt"
       		echo -e "${GREEN}File '$file_name' has been created successfully in '$db_name'! You can now proceed with the next steps.${NC}"
+			read -p "Please enter the number of columns you want to insert: " columnNum
+			while [[ -z "${columnNum}" || !("$columnNum" =~ '^[0-9]+$') ]]
+			# validaton --> NO STRINGS
+			do
+					echo -e "${RED}Error: Input cannot be a string or empty or contain only spaces. ${NC}"
+					read -p "Please enter numbers only: " columnNum
+	      	done
 			read -p "Please enter the value for the column that will serve as the primary key: " pkcolumn
+			while [[ -z "${pkcolumn}" ]]
+			do
+					echo -e "${RED}Error: Input cannot be empty or contain only spaces.${NC}"
+					read -p "Please provide a valid column name: " pkcolumn
+	      	done
+			read -p "Please enter the datatype for this column: " pkDataType
+			while [[ -z "${pkDataType}" ]]
+			do
+					echo -e "${RED}Error: Input cannot be empty or contain only spaces.${NC}"
+					read -p "Please provide a valid column datatype: " pkDataType
+	      	done
 			echo -n "$pkcolumn(PK):">> "$db_name/$file_name.txt"
-			for ((i=0; i<5; i++))
+			echo -n "$pkcolumn:$pkDataType:PK">> "$db_name/$file_name.metaData.txt"
+			for ((i=0; i<$columnNum; i++))
 			do
 				read -p "Please enter the value for the column $((i+1)): " column
 				while [[ -z "${column}" ]]
@@ -75,6 +94,12 @@ while true ;do
 					echo -e "${RED}Error: Input cannot be empty or contain only spaces.${NC}"
 					read -p "Please provide a valid column name: " column
 	      		done
+				read -p "Please provide a valid column datatype: " colDataType
+				while [[ -z "${colDataType}" ]]
+				do
+					echo -e "${RED}Error: Input cannot be empty or contain only spaces.${NC}"
+					read -p "Please provide a valid column datatype: " colDataType
+				done
 			echo -n $column: >> "$db_name/$file_name.txt"
       		done
     		echo -e "${GREEN}Columns have been added successfully!${NC}"
