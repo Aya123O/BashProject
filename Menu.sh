@@ -38,98 +38,148 @@ while true ;do
     echo ""
 
     echo -e "${BOLD}${YELLOW}➤ 1. Create Table${NC}"
-    echo -e "${BOLD}${YELLOW}➤ 2. List Tables${NC}"
-    echo -e "${BOLD}${YELLOW}➤ 3. Insert into Table${NC}"
-    echo -e "${BOLD}${YELLOW}➤ 4. Drop table${NC}"
-    echo -e "${BOLD}${YELLOW}➤ 5. Update Table${NC}"  # New option for updating table
+    echo -e "${BOLD}${YELLOW}➤ 2. Insert into Table${NC}"
+    echo -e "${BOLD}${YELLOW}➤ 3. List All Table${NC}"
+     echo -e "${BOLD}${YELLOW}➤ 4. select Table${NC}"
+    echo -e "${BOLD}${YELLOW}➤ 5. Drop table${NC}"
+    echo -e "${BOLD}${YELLOW}➤ 6. Update Table${NC}"  # New option for updating table
     echo -e "${BOLD}${CYAN}➤ 6. Return to Main Menu${NC}"  # New option to return to main menu
     echo -e "${BOLD}${RED}➤ 0. Exit${NC}" 
     echo ""
     read -p "Please choose an option: " choice
 
+       
         case $choice in
-            1)
-               # create a metadata file --> ID: int, Name: string
-    		echo -e "${CYAN}--- Creating Table ---${NC}"
+    1)
+        echo -e "${CYAN}--- Creating Table ---${NC}"
+        read -p "Enter the name of the new table: " table_name
 
-    		read -p "Enter the name of the new file: " file_name
-    		if [[ -z "$db_name/$file_name.txt" ]]
-    		then
-			echo -e "${RED}Error: Input cannot be empty or contain only spaces. Please provide a valid value.${NC}"
-    			#read -p "Press [Enter] to return to the menu..."
-    		elif [ -f $db_name/$file_name.txt ]
-		then
-			echo -e "${RED}File '$file_name' already exists in '$db_name'.${NC}"
-    			#read -p "Press [Enter] to return to the menu..."
-			else
-			touch "$db_name/$file_name.txt"
-			touch "$db_name/$file_name.metaData.txt"
-      		echo -e "${GREEN}File '$file_name' has been created successfully in '$db_name'! You can now proceed with the next steps.${NC}"
-			read -p "Please enter the number of columns you want to insert: " columnNum
-			while [[ -z "${columnNum}" || !("$columnNum" =~ '^[0-9]+$') ]]
-			# validaton --> NO STRINGS
-			do
-					echo -e "${RED}Error: Input cannot be a string or empty or contain only spaces. ${NC}"
-					read -p "Please enter numbers only: " columnNum
-	      	done
-			read -p "Please enter the value for the column that will serve as the primary key: " pkcolumn
-			while [[ -z "${pkcolumn}" ]]
-			do
-					echo -e "${RED}Error: Input cannot be empty or contain only spaces.${NC}"
-					read -p "Please provide a valid column name: " pkcolumn
-	      	done
-			read -p "Please enter the datatype for this column: " pkDataType
-			while [[ -z "${pkDataType}" ]]
-			do
-					echo -e "${RED}Error: Input cannot be empty or contain only spaces.${NC}"
-					read -p "Please provide a valid column datatype: " pkDataType
-	      	done
-			echo -n "$pkcolumn(PK):">> "$db_name/$file_name.txt"
-			echo -n "$pkcolumn:$pkDataType:PK">> "$db_name/$file_name.metaData.txt"
-			for ((i=0; i<$columnNum; i++))
-			do
-				read -p "Please enter the value for the column $((i+1)): " column
-				while [[ -z "${column}" ]]
-				do
-					echo -e "${RED}Error: Input cannot be empty or contain only spaces.${NC}"
-					read -p "Please provide a valid column name: " column
-	      		done
-				read -p "Please provide a valid column datatype: " colDataType
-				while [[ -z "${colDataType}" ]]
-				do
-					echo -e "${RED}Error: Input cannot be empty or contain only spaces.${NC}"
-					read -p "Please provide a valid column datatype: " colDataType
-				done
-			echo -n $column: >> "$db_name/$file_name.txt"
-      		done
-    		echo -e "${GREEN}Columns have been added successfully!${NC}"
-    		#read -p "Press [Enter] to return to the menu..."
-    		fi
-                ;;
-            2)
-                # List Tables code here
-                echo "Listing tables..."
-                ;;
-            3)
-                # Insert into Table code here
-                echo "Inserting into table..."
-                ;;
-            4)
-                
-                echo "Dropping table..."
-                ;;
-            5)
-               
-                echo "Updating table..."
-                ;;
-            6)   return  
-                ;;
-            0)
+        if [[ -z "$table_name" ]]; then
+            echo -e "${RED}Error: Table name cannot be empty.${NC}"
+        elif [ -f "$db_name/$table_name.txt" ]; then
+            echo -e "${RED}Table '$table_name' already exists.${NC}"
+        else
+            touch "$db_name/$table_name.txt"
+            touch "$db_name/$table_name.metaData.txt"
+            echo -e "${GREEN}Table '$table_name' created successfully!${NC}"
+
+            read -p "Enter number of columns (including primary key): " num_columns
+            while ! [[ "$num_columns" =~ ^[0-9]+$ ]] || [ "$num_columns" -lt 1 ]; do
+                echo -e "${RED}Error: Please enter a valid number of columns.${NC}"
+                read -p "Enter number of columns: " num_columns
+            done
+
+            read -p "Enter primary key column name: " pk_name
+            while [[ -z "$pk_name" ]]; do
+                echo -e "${RED}Error: Primary key name cannot be empty.${NC}"
+                read -p "Enter primary key column name: " pk_name
+            done
+
+            read -p "Enter primary key column data type: " pk_type
+            while [[ -z "$pk_type" ]]; do
+                echo -e "${RED}Error: Primary key data type cannot be empty.${NC}"
+                read -p "Enter primary key column data type: " pk_type
+            done
+
+            echo -e "$pk_name:$pk_type:PK" >> "$db_name/$table_name.metaData.txt"
+            echo -n "$pk_name:" >> "$db_name/$table_name.txt"
+
+            for ((i=0; i<num_columns-1; i++)); do
+                read -p "Enter column $((i+1)) name: " col_name
+                while [[ -z "$col_name" ]]; do
+                    echo -e "${RED}Error: Column name cannot be empty.${NC}"
+                    read -p "Enter column $((i+1)) name: " col_name
+                done
+
+                read -p "Enter column $((i+1)) data type: " col_type
+                while [[ -z "$col_type" ]]; do
+                    echo -e "${RED}Error: Column data type cannot be empty.${NC}"
+                    read -p "Enter column $((i+1)) data type: " col_type
+                done
+
+                echo -e "$col_name:$col_type" >> "$db_name/$table_name.metaData.txt"
+                echo -n "$col_name:" >> "$db_name/$table_name.txt"
+            done
+            echo -e "${GREEN}Columns added successfully!${NC}"
+        fi
+        ;;
+    2)
+        echo -e "${CYAN}--- Insert Data into Table ---${NC}"
+        echo -e "${BG_GREEN}${WHITE}==========================================================${NC}"
+
+        read -p "Enter the name of the table to insert data into: " insert_table
+
+        if [ -f "$db_name/$insert_table.txt" ]; then
+            columns=$(cat "$db_name/$insert_table.metaData.txt" | cut -d: -f1)
+
+            for column in $columns; do
+                read -p "Enter value for $column: " value
+                while [[ -z "$value:1" ]]; do
+                    echo -e "${RED}Error: Value for $column cannot be empty.${NC}"
+                    read -p "Enter value for $column: " value
+                done
+                echo -n "$value:" >> "$db_name/$insert_table.txt"
+            done
+
+            echo "" >> "$db_name/$insert_table.txt"
+            echo -e "${GREEN}Data inserted successfully!${NC}"
+        else
+            echo -e "${RED}Table '$insert_table' does not exist.${NC}"
+        fi
+        ;;
+    3)
+        echo -e "${CYAN}--- Listing Tables ---${NC}"
+        echo -e "${BG_GREEN}${WHITE}==========================================================${NC}"
+        table_files=$(ls $db_name/*.txt 2>/dev/null)
+
+        if [[ -z "$table_files" ]]; then
+            echo -e "${RED}No Tables Found.${NC}"
+        else
+            echo -e "${CYAN}Available Tables:${NC}"
+            for table in $table_files; do
+                table_name=$(basename "$table" .txt)
+                echo " - $table_name"
+            done
+        fi
+        read -p "Press [Enter] to return to the menu..."
+        ;;
+    4)
+        echo -e "${CYAN}--- Select Table ---${NC}"
+        echo -e "${BG_GREEN}${WHITE}==========================================================${NC}"
+
+        read -p "Enter the name of the table to display data: " selected_table
+
+        if [[ ! -f "$db_name/$selected_table.txt" ]]; then
+            echo -e "${RED}Table '$selected_table' does not exist.${NC}"
+        else
+            echo -e "${CYAN}Displaying Data for Table '$selected_table':${NC}"
+
+            header=$(head -n 1 "$db_name/$selected_table.metaData.txt" | cut -d: -f1 | tr '\n' ' ')
+            while IFS= read -r row; do
+                echo "$row" | tr ':' ' '
+            done < "$db_name/$selected_table.txt"
+        fi
+        ;;
+    5)
+        echo -e "${CYAN}--- Drop Table ---${NC}"
+        echo -e "${BG_GREEN}${WHITE}==========================================================${NC}"
+
+        read -p "Enter the name of the table to drop: " drop_table
+
+        if [ -f "$db_name/$drop_table.txt" ]; then
+            rm "$db_name/$drop_table.txt" "$db_name/$drop_table.metaData.txt"
+            echo -e "${GREEN}Table '$drop_table' has been dropped successfully!${NC}"
+        else
+            echo -e "${RED}Table '$drop_table' does not exist.${NC}"
+        fi
+        ;;
+
+        0)
                 
                 echo "Exiting the program..."
                 exit 0
                 ;;
-            *)
+        *)
                 echo "Invalid option, please try again."
                 ;;
         esac
@@ -232,7 +282,7 @@ connect_database() {
 }
 
 drop_database(){
-    #for loop 3 times to input a correct name!!
+  
     read -p "Enter the name of the database you want to drop: " name
     if [ -d $name ]
     then
@@ -257,8 +307,6 @@ drop_database(){
     then
     	read -p "Press [Enter] to return to the menu..."
     fi
-    #echo "Dropping database..." 
-    # Add your drop logic here
 }
 
 show_footer() {
