@@ -1,2 +1,0 @@
-id:name:salary:
-1:aya:100:

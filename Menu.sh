@@ -12,6 +12,7 @@ BG_GREEN='\033[42m'  # Background Green for highlighting
 BG_CYAN='\033[46m'   # Background Cyan for sections
 NC='\033[0m'         # No Color "
 
+
 display_main_menu() {
     clear  
 
@@ -38,14 +39,16 @@ while true ;do
     echo ""
 
     echo -e "${BOLD}${YELLOW}➤ 1. Create Table${NC}"
-    echo -e "${BOLD}${YELLOW}➤ 2. Insert into Table${NC}"
-    echo -e "${BOLD}${YELLOW}➤ 3. List All Table${NC}"
-     echo -e "${BOLD}${YELLOW}➤ 4. select Table${NC}"
-    echo -e "${BOLD}${YELLOW}➤ 5. Drop table${NC}"
-    echo -e "${BOLD}${YELLOW}➤ 6. Update Table${NC}"  # New option for updating table
-    echo -e "${BOLD}${CYAN}➤ 6. Return to Main Menu${NC}"  # New option to return to main menu
+    echo -e "${BOLD}${YELLOW}➤ 2. List All Tables${NC}"
+    echo -e "${BOLD}${YELLOW}➤ 3. Drop Table${NC}"
+    echo -e "${BOLD}${YELLOW}➤ 4. Insert into Table${NC}"
+    echo -e "${BOLD}${YELLOW}➤ 5. Select From Table${NC}"
+    echo -e "${BOLD}${YELLOW}➤ 6. Delete From Table${NC}"
+    echo -e "${BOLD}${YELLOW}➤ 7. Update Table${NC}"  # New option for updating table
+    echo -e "${BOLD}${CYAN}➤ 8. Return to Main Menu${NC}"  # New option to return to main menu
     echo -e "${BOLD}${RED}➤ 0. Exit${NC}" 
     echo ""
+
     read -p "Please choose an option: " choice
 
        
@@ -70,64 +73,55 @@ while true ;do
             done
 
             read -p "Enter primary key column name: " pk_name
-            while [[ -z "$pk_name" ]]; do
-                echo -e "${RED}Error: Primary key name cannot be empty.${NC}"
+
+		 # VALIDATION --> COL. NAME CAN NOT BE A NUMBER
+		 # VALIDATION --> PK CAN NOT BE REPEATED
+            while [[ -z "$pk_name" || "$pk_name" =~ ^[0-9]+$ ]]; do
+                echo -e "${RED}Error: Primary key name cannot be empty & cannot be a number.${NC}"
                 read -p "Enter primary key column name: " pk_name
             done
 
             read -p "Enter primary key column data type: " pk_type
+
+		 # VALIDATION --> INSERT DATATYPES ONLY
             while [[ -z "$pk_type" ]]; do
                 echo -e "${RED}Error: Primary key data type cannot be empty.${NC}"
                 read -p "Enter primary key column data type: " pk_type
             done
 
             echo -e "$pk_name:$pk_type:PK" >> "$db_name/$table_name.metaData.txt"
-            echo -n "$pk_name:" >> "$db_name/$table_name.txt"
+            echo -n "$pk_name" >> "$db_name/$table_name.txt"
 
             for ((i=0; i<num_columns-1; i++)); do
                 read -p "Enter column $((i+1)) name: " col_name
+
+		 # VALIDATION --> COL. NAME CAN'T BE A NUMBER
                 while [[ -z "$col_name" ]]; do
                     echo -e "${RED}Error: Column name cannot be empty.${NC}"
                     read -p "Enter column $((i+1)) name: " col_name
                 done
 
                 read -p "Enter column $((i+1)) data type: " col_type
+
+		 # VALIDATION --> INSERT DATATYPES ONLY
                 while [[ -z "$col_type" ]]; do
                     echo -e "${RED}Error: Column data type cannot be empty.${NC}"
                     read -p "Enter column $((i+1)) data type: " col_type
                 done
 
                 echo -e "$col_name:$col_type" >> "$db_name/$table_name.metaData.txt"
-                echo -n "$col_name:" >> "$db_name/$table_name.txt"
+                if [[ $i -ne $((num_columns-1)) ]]
+                then
+                    echo -n ":$col_name" >> "$db_name/$table_name.txt"
+                else                
+                    echo -n "$col_name" >> "$db_name/$table_name.txt"
+                fi
             done
             echo -e "${GREEN}Columns added successfully!${NC}"
         fi
         ;;
+        
     2)
-        echo -e "${CYAN}--- Insert Data into Table ---${NC}"
-        echo -e "${BG_GREEN}${WHITE}==========================================================${NC}"
-
-        read -p "Enter the name of the table to insert data into: " insert_table
-
-        if [ -f "$db_name/$insert_table.txt" ]; then
-            columns=$(cat "$db_name/$insert_table.metaData.txt" | cut -d: -f1)
-
-            for column in $columns; do
-                read -p "Enter value for $column: " value
-                while [[ -z "$value:1" ]]; do
-                    echo -e "${RED}Error: Value for $column cannot be empty.${NC}"
-                    read -p "Enter value for $column: " value
-                done
-                echo -n "$value:" >> "$db_name/$insert_table.txt"
-            done
-
-            echo "" >> "$db_name/$insert_table.txt"
-            echo -e "${GREEN}Data inserted successfully!${NC}"
-        else
-            echo -e "${RED}Table '$insert_table' does not exist.${NC}"
-        fi
-        ;;
-    3)
             echo -e "${CYAN}--- Listing Tables ---${NC}"
         echo -e "${BG_GREEN}${WHITE}=======================${NC}"
 
@@ -155,9 +149,53 @@ while true ;do
         fi
         ;;
 
-       
-    4)
-       echo -e "${CYAN}--- Select Table ---${NC}"
+
+	3)
+	   echo -e "${CYAN}--- Drop Table ---${NC}"
+        echo -e "${BG_GREEN}${WHITE}==========================================================${NC}"
+
+        read -p "Enter the name of the table to drop: " drop_table
+
+        if [ -f "$db_name/$drop_table.txt" ]; then
+            rm "$db_name/$drop_table.txt" "$db_name/$drop_table.metaData.txt"
+            echo -e "${GREEN}Table '$drop_table' has been dropped successfully!${NC}"
+        else
+            echo -e "${RED}Table '$drop_table' does not exist.${NC}"
+        fi
+        ;;
+
+	4) 
+	   echo -e "${CYAN}--- Insert Data into Table ---${NC}"
+        echo -e "${BG_GREEN}${WHITE}==========================================================${NC}"
+
+        read -p "Enter the name of the table to insert data into: " insert_table
+
+        if [ -f "$db_name/$insert_table.txt" ]; then
+            columns=$(cat "$db_name/$insert_table.metaData.txt" | cut -d: -f1)
+		 echo -e >> "$db_name/$insert_table.txt"
+
+            for column in $columns; do
+			# VALIDATION --> PK CAN NOT BE REPEATED
+                read -p "Enter value for $column: " value
+                while [[ -z "$value" ]]; do
+                    echo -e "${RED}Error: Value for $column cannot be empty.${NC}"
+                    read -p "Enter value for $column: " value
+                done
+                echo -n "$value:" >> "$db_name/$insert_table.txt"
+
+            done
+            # removing the last : in the file --> :$ (: char. to remove, $ end of line), // (replace by nothing)
+            # /dev/null 2>&1 --> redirecting the error to the /dev/null filee
+            sed -i '' 's/:$//' "$db_name/$insert_table.txt" > /dev/null 2>&1
+            echo -e "${GREEN}Data inserted successfully!${NC}"
+        else
+            echo -e "${RED}Table '$insert_table' does not exist.${NC}"
+        fi
+        ;;
+
+    5)
+
+    echo -e "${CYAN}--- Select Table ---${NC}"
     echo -e "${BG_GREEN}${WHITE}===================${NC}"
 
     read -p "Enter the name of the table to display data: " selected_table
@@ -194,22 +232,172 @@ while true ;do
         fi
     fi
     ;;
-    5)
-        echo -e "${CYAN}--- Drop Table ---${NC}"
-        echo -e "${BG_GREEN}${WHITE}==========================================================${NC}"
 
-        read -p "Enter the name of the table to drop: " drop_table
+    6)
+        	echo -e "${CYAN}--- Delete From Table ---${NC}"
+    		echo -e "${BG_GREEN}${WHITE}===================${NC}"
 
-        if [ -f "$db_name/$drop_table.txt" ]; then
-            rm "$db_name/$drop_table.txt" "$db_name/$drop_table.metaData.txt"
-            echo -e "${GREEN}Table '$drop_table' has been dropped successfully!${NC}"
-        else
-            echo -e "${RED}Table '$drop_table' does not exist.${NC}"
+    		read -p "Enter the name of the table to display its data: " display_table
+		
+		if  [[ ! -f "$db_name/$display_table.txt" ]]
+		then
+			echo -e "${RED}Table '$display_table' does not exist.${NC}"
+		else
+            cat "$db_name/$display_table.txt"
+			echo -e "\n"
+			read -p "Enter the primary key of the record you want to delete: " delete_rowPK
+			# VALIDATION --> inserted_pk CAN'T BE A STRING
+			while [[ -z ${delete_rowPK} ]]
+			do
+                    echo -e "${RED}Error: primary key cannot be empty.${NC}"
+                    read -p "Enter a valid primary key: " inserted_pk
+            done
+            read -p "Are you sure you want to permanently delete this row? (yes/no):" checking
+	        if [[ "yes" =~ $checking ]]
+            then
+                flagdel=0
+                existing_pk=$(tail -n +2 "$db_name/$display_table.txt" | cut -d: -f1)
+			flagid=0;
+			lineNumberr=1;
+			for pk in $existing_pk
+			do
+				if [[ $flagid -eq 0 ]]
+				then
+					lineNumberr=$((lineNumberr+1))
+				fi
+				if [[ $pk =~ "$delete_rowPK" ]]
+                # VALIDATION --> PK IF IT DOESN'T EXIST
+                # VALIDATION --> WE CAN'T DELETE THE 1ST LINE (HEADERS --> id:name:age)
+				then
+					flagid=1
+                    echo $lineNumberr
+                    # -i --> to modify the original file (without it, output will be in terminal w/o modifying it)
+                    sed -i '' "${lineNumberr}d" "$db_name/$display_table.txt"
+                    echo -e "${GREEN}ID 'deleted_rowPK' deleted successfully.${NC}"
+                    return;
+                fi
+            done
+            elif [[ "no" =~ $checking ]]
+            then
+                    read -p "Press [Enter] to return to the menu..."
+                    flagdel=1
+            else
+                # ASK FOR USER INPUT AGAIN
+                echo -e "${RED}Error: Please enter yes/no.${NC}"
+                #read -p "Are you sure you want to permanently delete this row? (yes/no):" checking
+            fi
         fi
-        ;;
+                ;;
+
+	7)
+		# list the rows inside the specific table - DONE
+		# ask 'which ID do you want to update data in ?' - DONE
+
+    		echo -e "${CYAN}--- Update Table ---${NC}"
+    		echo -e "${BG_GREEN}${WHITE}===================${NC}"
+
+    		read -p "Enter the name of the table to display its data: " updated_table
+		
+		if  [[ ! -f "$db_name/$updated_table.txt" ]]
+		then
+			echo -e "${RED}Table '$updated_table' does not exist.${NC}"
+		else
+			cat "$db_name/$insert_table.txt"
+			echo -e "\n"
+			read -p "Enter the primary key of the record you want to update: " inserted_pk
+			# VALIDATION --> $inserted_pk CAN'T BE A STRING
+			while [[ -z ${inserted_pk} ]]
+			do
+                    echo -e "${RED}Error: primary key cannot be empty.${NC}"
+                    read -p "Enter a valid primary key: " inserted_pk
+            done
+		    # LOOP ON VALUES(in .txt) TO GET ID, CHECK IF id = $inserted_pk (if NOT --> does NOT exist)
+			# SKIP 1ST ROW TO PREVENT TAKING THE TITLES (start from 2nd row)
+			existing_pk=$(tail -n +2 "$db_name/$insert_table.txt" | cut -d: -f1)
+			flag=0;
+			lineNum=1;
+			for id in $existing_pk
+			do
+                idflag=0;
+				if [[ $flag -eq 0 ]]
+				then
+					lineNum=$((lineNum+1))
+				fi
+				if [[ $id =~ "$inserted_pk" ]]
+				then
+					flag=1
+                    idflag=1;
+					echo -e "${GREEN}ID exists.${NC}"
+					read -p "Enter the column name you want to update: " inserted_column
+
+				# VALIDATION --> CHECK IF THE $inserted_column EXISTS
+				while [[ -z $inserted_column ]]
+				do
+                    		echo -e "${RED}Error: column name cannot be empty.${NC}"
+                    		read -p "Enter a valid column name: " inserted_column
+                done
+	
+				#loop on titles (1st line only),add a counter increment it
+				#check on $inserted_column when found
+				#cut using the counter
+				col_Titles=$(head -n 1 "$db_name/$insert_table.txt" | tr ':' ' ')
+				#echo $col_Titles
+				i=0
+				for title in $col_Titles
+				do
+					#echo $title
+					#echo $inserted_column
+					i=$((i+1));
+					if [[  $title =~ "$inserted_column" ]]
+					then	
+						#echo $i
+                        idflag=1;
+						break
+					fi
+				done
+
+# get lineNumber by ID
+# loop over the line
+# & change $fieldNum to $updated_data
+				fieldNum=$i
+				old_data=$(cut -d ":" -f$fieldNum "$db_name/$insert_table.txt" | sed -n "${lineNum}p")
+				echo -e "${GREEN}data to be updated: '$old_data'${NC}"
+
+				read -p "Enter new data for '$inserted_column': " new_data
+				while [[ -z $new_data ]]
+				do
+					echo -e "${RED}Error: the new data cannot be empty.${NC}"
+                    read -p "Enter a valid value for the new data: " new_data
+				done
+
+                # if $fieldNum (value inside fn 1 for ex.) == old_data --> replace w/ new
+                new_fileData=$(awk -v old_data="$old_data" -v new_data="$new_data" -v fieldNum="$fieldNum" 'BEGIN{FS=OFS=":"} {if ($fieldNum == old_data) $fieldNum = new_data; print}' "$db_name/$insert_table.txt")
+				
+				# replace old_data with new_data (in the .txt file) (> overrides, >> adds new data after already exisiting ones)
+				echo -n "$new_fileData:" > "$db_name/$insert_table.txt"
+				echo -e "${GREEN}Data updated successfully.${NC}"
+# ID:Name:Age:
+# 10:jana:23:
+# 20:malak:50:
+# 30:khaled:70::::::
+# WHEN I UPDATE, EXTRA : IS ADDED AT THE END EACH TIME 
+				fi
+            idflag=1
+			done
+            if [[ $idflag -eq 0 ]]
+                then
+                    echo -e "${RED}id '$inserted_pk' does not exist.${NC}"
+            fi		
+		fi
+
+		# error for $inserted_pk --> if it doesn't exist - DONE
+		# validation for $inserted_column --> must be one of the columns available + has to be the EXACT SAME col_name
+		# validation for $updated_data --> must be the old value
+		# validation for $new_data --> must be of the SAME datatype + (show datatype for the user)
+
+		;;			
 
         0)
-                
                 echo "Exiting the program..."
                 exit 0
                 ;;
@@ -329,7 +517,7 @@ drop_database(){
 	elif [[ "no" =~ $check ]]
 	then
 	        read -p "Press [Enter] to return to the menu..."
-		flag=1
+		    flag=1
 	else
 	  	echo -e "${RED}Error: Please enter yes/no.${NC}"
 	fi
