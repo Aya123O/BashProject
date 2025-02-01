@@ -57,6 +57,7 @@ while true ;do
         echo -e "${CYAN}--- Creating Table ---${NC}"
         read -p "Enter the name of the new table: " table_name
 
+        # VALIDATION --> name with _ or - or spaces ONLY
         if [[ -z "$table_name" ]]; then
             echo -e "${RED}Error: Table name cannot be empty.${NC}"
         elif [ -f "$db_name/$table_name.txt" ]; then
@@ -68,26 +69,41 @@ while true ;do
 
             read -p "Enter number of columns (including primary key): " num_columns
             while ! [[ "$num_columns" =~ ^[0-9]+$ ]] || [ "$num_columns" -lt 1 ]; do
+                # write a better error message
                 echo -e "${RED}Error: Please enter a valid number of columns.${NC}"
-                read -p "Enter number of columns: " num_columns
+                read -p "Enter a valid number of columns: " num_columns
             done
 
             read -p "Enter primary key column name: " pk_name
-
-		 # VALIDATION --> COL. NAME CAN NOT BE A NUMBER
-		 # VALIDATION --> PK CAN NOT BE REPEATED
-            while [[ -z "$pk_name" || "$pk_name" =~ ^[0-9]+$ ]]; do
-                echo -e "${RED}Error: Primary key name cannot be empty & cannot be a number.${NC}"
-                read -p "Enter primary key column name: " pk_name
+		 # VALIDATION --> PK COL. NAME CAN NOT BE A NUMBER/SPECIAL CHAR ONLY (must be letters OR mix of letters & numbers) - DONE
+            while [[ -z "$pk_name" || "$pk_name" =~ ^[0-9+_!@#%*():.\/$%]+$ ]]
+            do
+                    if [[ -z "$pk_name" ]]
+                    then
+                    echo -e "${RED}Error: Primary key name cannot be empty.${NC}"
+                    read -p "Enter a valid primary key column name: " pk_name
+                    elif [[ "$pk_name" =~ ^[0-9+_!@#%*():.\/$%]+$ ]]
+                    then
+                    echo -e "${RED}Error: Primary key name cannot contain special characters only.${NC}"
+                    read -p "Enter a valid primary key column name: " pk_name
+                    fi
             done
 
             read -p "Enter primary key column data type: " pk_type
-
-		 # VALIDATION --> INSERT DATATYPES ONLY
-            while [[ -z "$pk_type" ]]; do
-                echo -e "${RED}Error: Primary key data type cannot be empty.${NC}"
-                read -p "Enter primary key column data type: " pk_type
+		    # VALIDATION --> INSERT DATATYPES ONLY (int,str)
+            while [[ -z "$pk_type" || "$pk_type" != "int" && "$pk_type" != "string" ]]
+            do
+                if [[ -z "$pk_type" ]]
+                then
+                    echo -e "${RED}Error: Primary key data type cannot be empty.${NC}"
+                    read -p "Enter a valid primary key column data type: " pk_type
+                elif [[ "$pk_type" != "int" && "$pk_type" != "string" ]]
+                then
+                    echo -e "${RED}Primary key data type can either be a string or an int${NC}"
+                    read -p "Enter a valid primary key column data type: " pk_type
+                fi
             done
+
 
             echo -e "$pk_name:$pk_type:PK" >> "$db_name/$table_name.metaData.txt"
             echo -n "$pk_name" >> "$db_name/$table_name.txt"
@@ -95,18 +111,33 @@ while true ;do
             for ((i=0; i<num_columns-1; i++)); do
                 read -p "Enter column $((i+1)) name: " col_name
 
-		 # VALIDATION --> COL. NAME CAN'T BE A NUMBER
-                while [[ -z "$col_name" ]]; do
-                    echo -e "${RED}Error: Column name cannot be empty.${NC}"
-                    read -p "Enter column $((i+1)) name: " col_name
+		        # VALIDATION --> COL. NAME CAN'T BE A NUMBER (can be letters OR a mix of letters) - DONE
+                while [[ -z "$col_name" ||  $col_name =~ ^[0-9+_!@#%*():.\/$%]+$ ]]; do
+                    if [[ -z "$col_name" ]]
+                    then
+                        echo -e "${RED}Error: Column name cannot be empty.${NC}"
+                        read -p "Enter a valid column name: " col_name
+                    elif [[ "$col_name" =~ ^[0-9+_!@#%*():.\/$%]+$ ]]
+                    then
+                        echo -e "${RED}Error: Column name cannot contain special characters/numbers only.${NC}"
+                        read -p "Enter a valid column name: " col_name
+                    fi
                 done
 
                 read -p "Enter column $((i+1)) data type: " col_type
 
-		 # VALIDATION --> INSERT DATATYPES ONLY
-                while [[ -z "$col_type" ]]; do
-                    echo -e "${RED}Error: Column data type cannot be empty.${NC}"
-                    read -p "Enter column $((i+1)) data type: " col_type
+		        # VALIDATION --> INSERT DATATYPES ONLY (int, string, boolean) - DONE
+                while [[ -z "$col_type" || "$col_type" != "int" && "$col_type" != "string" && "$col_type" != "boolean" ]]
+                do
+                    if [[ -z "$col_type" ]]
+                    then
+                        echo -e "${RED}Error: Column data type cannot be empty.${NC}"
+                        read -p "Enter a valid data type for column $((i+1)): " col_type
+                    elif [[ "$col_type" != "int" && "$col_type" != "string" && "$col_type" != "boolean" ]]
+                    then
+                        echo -e "${RED}Column data type can either be a string or an int or boolean${NC}"
+                        read -p "Enter a valid data type for column $((i+1)): " col_type
+                    fi
                 done
 
                 echo -e "$col_name:$col_type" >> "$db_name/$table_name.metaData.txt"
@@ -172,17 +203,29 @@ while true ;do
 
         if [ -f "$db_name/$insert_table.txt" ]; then
             columns=$(cat "$db_name/$insert_table.metaData.txt" | cut -d: -f1)
-		 echo -e >> "$db_name/$insert_table.txt"
+            columns_dt=$(cat "$db_name/$insert_table.metaData.txt" | cut -d: -f2,3)
+            # columns=$(cat "$db_name/$insert_table.metaData.txt" | cut -d: -f1,2,3)
+		    echo -e >> "$db_name/$insert_table.txt"
 
             for column in $columns; do
+            #for column_dt in $columns_dt; do
+            
 			# VALIDATION --> PK CAN NOT BE REPEATED
+            # VALIDATION --> SHOW DATATYPE OF THIS SPECIFIC COLUMN FOR THE USER
+            # loop over the first field
+            # if $column is NOT the 1st one --> print the 2nd field in this line
+            # if $column is the 1st one --> add the data print the 2nd field in this line + add 'PK'
+            # OR
+            # compare the 1st field of every line to $column
+
                 read -p "Enter value for $column: " value
-                while [[ -z "$value" ]]; do
+                # with datatype $column_dt
+                while [[ -z "$value" ]]; 
+                do
                     echo -e "${RED}Error: Value for $column cannot be empty.${NC}"
                     read -p "Enter value for $column: " value
                 done
                 echo -n "$value:" >> "$db_name/$insert_table.txt"
-
             done
             # removing the last : in the file --> :$ (: char. to remove, $ end of line), // (replace by nothing)
             # /dev/null 2>&1 --> redirecting the error to the /dev/null filee
@@ -245,9 +288,9 @@ while true ;do
 		else
             cat "$db_name/$display_table.txt"
 			echo -e "\n"
-			read -p "Enter the primary key of the record you want to delete: " delete_rowPK
+			read -p "Enter the primary key of the record you want to delete: " deleted_rowPK
 			# VALIDATION --> inserted_pk CAN'T BE A STRING
-			while [[ -z ${delete_rowPK} ]]
+			while [[ -z ${deleted_rowPK} ]]
 			do
                     echo -e "${RED}Error: primary key cannot be empty.${NC}"
                     read -p "Enter a valid primary key: " inserted_pk
@@ -255,7 +298,7 @@ while true ;do
             read -p "Are you sure you want to permanently delete this row? (yes/no):" checking
 	        if [[ "yes" =~ $checking ]]
             then
-                flagdel=0
+                # flagdel=0
                 existing_pk=$(tail -n +2 "$db_name/$display_table.txt" | cut -d: -f1)
 			flagid=0;
 			lineNumberr=1;
@@ -265,7 +308,7 @@ while true ;do
 				then
 					lineNumberr=$((lineNumberr+1))
 				fi
-				if [[ $pk =~ "$delete_rowPK" ]]
+				if [[ $pk =~ $deleted_rowPK ]]
                 # VALIDATION --> PK IF IT DOESN'T EXIST
                 # VALIDATION --> WE CAN'T DELETE THE 1ST LINE (HEADERS --> id:name:age)
 				then
@@ -280,7 +323,7 @@ while true ;do
             elif [[ "no" =~ $checking ]]
             then
                     read -p "Press [Enter] to return to the menu..."
-                    flagdel=1
+                    # flagdel=1
             else
                 # ASK FOR USER INPUT AGAIN
                 echo -e "${RED}Error: Please enter yes/no.${NC}"
@@ -305,7 +348,7 @@ while true ;do
 			cat "$db_name/$insert_table.txt"
 			echo -e "\n"
 			read -p "Enter the primary key of the record you want to update: " inserted_pk
-			# VALIDATION --> $inserted_pk CAN'T BE A STRING
+
 			while [[ -z ${inserted_pk} ]]
 			do
                     echo -e "${RED}Error: primary key cannot be empty.${NC}"
@@ -376,9 +419,9 @@ while true ;do
 				# replace old_data with new_data (in the .txt file) (> overrides, >> adds new data after already exisiting ones)
 				echo -n "$new_fileData:" > "$db_name/$insert_table.txt"
 				echo -e "${GREEN}Data updated successfully.${NC}"
-# ID:Name:Age:
-# 10:jana:23:
-# 20:malak:50:
+# ID:Name:Age
+# 10:jana:23
+# 20:malak:50
 # 30:khaled:70::::::
 # WHEN I UPDATE, EXTRA : IS ADDED AT THE END EACH TIME 
 				fi
@@ -434,6 +477,7 @@ create_database(){
 
    
     if [[ ! "$db_name" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+        # VALIDATION --> DB_NAME CAN NOT BE A SPECIAL CHARACTER/NUMBER ONLY
         echo -e "${RED}Invalid database name. Only alphanumeric characters, hyphens, and underscores are allowed.${NC}"
         read -p "Press [Enter] to return to the menu..."
         return
