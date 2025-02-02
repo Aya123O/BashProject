@@ -1,3 +1,0 @@
-ID_PK:int:PK
-Age_:int
-Name:string

@@ -196,141 +196,189 @@ while true ;do
         ;;
 
 	4) 
-	   echo -e "${CYAN}--- Insert Data into Table ---${NC}"
-        echo -e "${BG_GREEN}${WHITE}==========================================================${NC}"
+                    echo -e "${CYAN}--- Insert Data into Table ---${NC}"
+            echo -e "${BG_GREEN}${WHITE}==========================================================${NC}"
 
-        read -p "Enter the name of the table to insert data into: " insert_table
+            read -p "Enter the name of the table to insert data into: " insert_table
 
-        if [ -f "$db_name/$insert_table.txt" ]; then
-            columns=$(cat "$db_name/$insert_table.metaData.txt" | cut -d: -f1)
-            columns_dt=$(cat "$db_name/$insert_table.metaData.txt" | cut -d: -f2,3)
-            # columns=$(cat "$db_name/$insert_table.metaData.txt" | cut -d: -f1,2,3)
-		    echo -e >> "$db_name/$insert_table.txt"
+            if [ -f "$db_name/$insert_table.txt" ]; then
+                columns=$(cut -d: -f1 "$db_name/$insert_table.metaData.txt")
+                columns_dt=$(cut -d: -f2 "$db_name/$insert_table.metaData.txt")
+                pk_column=$(awk -F: '$3 == "PK" {print $1}' "$db_name/$insert_table.metaData.txt")
 
-            for column in $columns; do
-            #for column_dt in $columns_dt; do
-            
-			# VALIDATION --> PK CAN NOT BE REPEATED
-            # VALIDATION --> SHOW DATATYPE OF THIS SPECIFIC COLUMN FOR THE USER
-            # loop over the first field
-            # if $column is NOT the 1st one --> print the 2nd field in this line
-            # if $column is the 1st one --> add the data print the 2nd field in this line + add 'PK'
-            # OR
-            # compare the 1st field of every line to $column
+                echo -e "${CYAN}Insert Data for Table '$insert_table'${NC}"
+                echo -e "${BG_BLUE}${WHITE}----------------------------------------------------------${NC}"
 
-                read -p "Enter value for $column: " value
-                # with datatype $column_dt
-                while [[ -z "$value" ]]; 
-                do
-                    echo -e "${RED}Error: Value for $column cannot be empty.${NC}"
+                insert_line=""
+
+                for column in $columns; do
+                    column_dt=$(awk -F: -v col="$column" '$1 == col {print $2}' "$db_name/$insert_table.metaData.txt")
+
+                
+                    echo -e "${YELLOW}Data type for $column: ${WHITE}$column_dt${NC}"
+
+                
                     read -p "Enter value for $column: " value
+
+                
+                    while [[ -z "$value" ]]; do
+                        echo -e "${RED}Error: Value for $column cannot be empty.${NC}"
+                        read -p "Enter value for $column: " value
+                    done
+
+                    
+                    case $column_dt in
+                        int)
+                            while ! [[ "$value" =~ ^[0-9]+$ ]]; do
+                                echo -e "${RED}Error: $column must be an integer.${NC}"
+                                read -p "Enter value for $column: " value
+                            done
+                            ;;
+                        string)
+                            while [[ "$value" =~ [^a-zA-Z0-9[:space:]] ]]; do
+                                echo -e "${RED}Error: $column must be a valid string.${NC}"
+                                read -p "Enter value for $column: " value
+                            done
+                            ;;
+                        boolean)
+                            while [[ "$value" != "true" && "$value" != "false" ]]; do
+                                echo -e "${RED}Error: $column must be 'true' or 'false'.${NC}"
+                                read -p "Enter value for $column: " value
+                            done
+                            ;;
+                        *)
+                            echo -e "${RED}Error: Unknown data type '$column_dt' for column '$column'.${NC}"
+                            exit 1
+                            ;;
+                    esac
+
+                
+                    if [[ "$column" == "$pk_column" ]]; then
+                        if grep -q "^$value:" "$db_name/$insert_table.txt"; then
+                            echo -e "${RED}Error: Primary Key value '$value' already exists in the table.${NC}"
+                            exit 1
+                        fi
+                    fi
+
+                
+                    if [[ -z "$insert_line" ]]; then
+                        insert_line="$value"
+                    else
+                        insert_line="$insert_line:$value"
+                    fi
                 done
-                echo -n "$value:" >> "$db_name/$insert_table.txt"
-            done
-            # removing the last : in the file --> :$ (: char. to remove, $ end of line), // (replace by nothing)
-            # /dev/null 2>&1 --> redirecting the error to the /dev/null filee
-            sed -i '' 's/:$//' "$db_name/$insert_table.txt" > /dev/null 2>&1
-            echo -e "${GREEN}Data inserted successfully!${NC}"
-        else
-            echo -e "${RED}Table '$insert_table' does not exist.${NC}"
-        fi
-        ;;
+
+            
+                echo -e "${BG_BLUE}${WHITE}----------------------------------------------------------${NC}"
+                echo -e "${GREEN}Data inserted successfully into '$insert_table' table!${NC}"
+                echo "$insert_line" >> "$db_name/$insert_table.txt"
+                echo "" >> "$db_name/$insert_table.txt"
+            else
+                echo -e "${RED}Error: Table '$insert_table' does not exist.${NC}"
+            fi
+            ;;
 
     5)
+                         echo -e "${CYAN}--- Select Table ---${NC}"
+echo -e "${BG_GREEN}${WHITE}===================${NC}"
 
-    echo -e "${CYAN}--- Select Table ---${NC}"
-    echo -e "${BG_GREEN}${WHITE}===================${NC}"
+read -p "Enter the name of the table to display data: " selected_table
 
-    read -p "Enter the name of the table to display data: " selected_table
+if [[ ! -f "$db_name/$selected_table.txt" ]]; then
+    echo -e "${RED}Table '$selected_table' does not exist.${NC}"
+else
+    echo -e "${CYAN}Displaying Data for Table '$selected_table':${NC}"
+    header=$(head -n 1 "$db_name/$selected_table.metaData.txt" | cut -d: -f1 | tr '\n' ' ')
+    echo -e "Header: $header"
 
-    if [[ ! -f "$db_name/$selected_table.txt" ]]; then
-        echo -e "${RED}Table '$selected_table' does not exist.${NC}"
-    else
-        echo -e "${CYAN}Displaying Data for Table '$selected_table':${NC}"
-        header=$(head -n 1 "$db_name/$selected_table.metaData.txt" | cut -d: -f1 | tr '\n' ' ')
-        echo -e "Header: $header"
+    read -p "Do you want to search by 'id' or 'name'? " search_criteria
 
-        read -p "Do you want to search by 'id' or 'name'? " search_criteria
-
-        if [[ "$search_criteria" == "id" ]]; then
-            read -p "Enter the ID to search for: " search_value
-            found_row=$(grep -P "^$search_value:" "$db_name/$selected_table.txt")
-            
-            if [[ -z "$found_row" ]]; then
-                echo -e "${RED}No row found with ID '$search_value'.${NC}"
-            else
-                echo "$found_row" | tr ':' ' '
-            fi
-        elif [[ "$search_criteria" == "name" ]]; then
-            read -p "Enter the Name to search for: " search_value
-            found_row=$(grep -i ":$search_value:" "$db_name/$selected_table.txt")
-            
-            if [[ -z "$found_row" ]]; then
-                echo -e "${RED}No row found with Name '$search_value'.${NC}"
-            else
-                echo "$found_row" | tr ':' ' '
-            fi
+    if [[ "$search_criteria" == "id" ]]; then
+        read -p "Enter the ID to search for: " search_value
+        found_row=$(grep -P "^$search_value:" "$db_name/$selected_table.txt")
+        
+        if [[ -z "$found_row" ]]; then
+            echo -e "${RED}No row found with ID '$search_value'.${NC}"
         else
-            echo -e "${RED}Invalid search criteria.${NC}"
+            echo "$found_row" | tr ':' ' '
         fi
+   
+       
+         elif [[ "$search_criteria" == "name" ]]; then
+        read -p "Enter the Name to search for: " search_value
+        found_row=$(grep ":$search_value" "$db_name/$selected_table.txt")
+        
+        if [[ -z "$found_row" ]]; then
+            echo -e "${RED}No row found with Name '$search_value'.${NC}"
+        else
+            echo "$found_row" | tr ':' ' '
+        fi
+    else
+        echo -e "${RED}Invalid search criteria.${NC}"
     fi
-    ;;
+fi
+;;
 
+   
     6)
-        	echo -e "${CYAN}--- Delete From Table ---${NC}"
-    		echo -e "${BG_GREEN}${WHITE}===================${NC}"
+                    echo -e "${CYAN}--- Delete From Table ---${NC}"
+                echo -e "${BG_GREEN}${WHITE}===================${NC}"
 
-    		read -p "Enter the name of the table to display its data: " display_table
-		
-		if  [[ ! -f "$db_name/$display_table.txt" ]]
-		then
-			echo -e "${RED}Table '$display_table' does not exist.${NC}"
-		else
-            cat "$db_name/$display_table.txt"
-			echo -e "\n"
-			read -p "Enter the primary key of the record you want to delete: " deleted_rowPK
-			# VALIDATION --> inserted_pk CAN'T BE A STRING
-			while [[ -z ${deleted_rowPK} ]]
-			do
-                    echo -e "${RED}Error: primary key cannot be empty.${NC}"
-                    read -p "Enter a valid primary key: " inserted_pk
-            done
-            read -p "Are you sure you want to permanently delete this row? (yes/no):" checking
-	        if [[ "yes" =~ $checking ]]
-            then
-                # flagdel=0
-                existing_pk=$(tail -n +2 "$db_name/$display_table.txt" | cut -d: -f1)
-			flagid=0;
-			lineNumberr=1;
-			for pk in $existing_pk
-			do
-				if [[ $flagid -eq 0 ]]
-				then
-					lineNumberr=$((lineNumberr+1))
-				fi
-				if [[ $pk =~ $deleted_rowPK ]]
-                # VALIDATION --> PK IF IT DOESN'T EXIST
-                # VALIDATION --> WE CAN'T DELETE THE 1ST LINE (HEADERS --> id:name:age)
-				then
-					flagid=1
-                    echo $lineNumberr
-                    # -i --> to modify the original file (without it, output will be in terminal w/o modifying it)
-                    sed -i '' "${lineNumberr}d" "$db_name/$display_table.txt"
-                    echo -e "${GREEN}ID 'deleted_rowPK' deleted successfully.${NC}"
-                    return;
+                read -p "Enter the name of the table to display its data: " display_table
+
+                if [[ ! -f "$db_name/$display_table.txt" ]]; then
+                    echo -e "${RED}Table '$display_table' does not exist.${NC}"
+                else
+                    echo -e "${CYAN}Displaying data for '$display_table':${NC}"
+                    cat "$db_name/$display_table.txt"
+                    echo -e "\n"
+
+                    read -p "Enter the primary key of the record you want to delete: " deleted_rowPK
+                    
+                    # VALIDATION: Primary key can't be empty
+                    while [[ -z "$deleted_rowPK" ]]; do
+                        echo -e "${RED}Error: Primary key cannot be empty.${NC}"
+                        read -p "Enter a valid primary key: " deleted_rowPK
+                    done
+
+                    # VALIDATION: Ensure the primary key is numeric (if that's the required type)
+                    while [[ ! "$deleted_rowPK" =~ ^[0-9]+$ ]]; do
+                        echo -e "${RED}Error: Primary key must be a valid number.${NC}"
+                        read -p "Enter a valid primary key: " deleted_rowPK
+                    done
+
+                    read -p "Are you sure you want to permanently delete this row? (yes/no): " checking
+
+                    if [[ "$checking" =~ ^[Yy]es$ ]]; then
+                        # Extract primary keys from the data, skipping the header (first line)
+                        existing_pk=$(tail -n +2 "$db_name/$display_table.txt" | cut -d: -f1)  # Skip the first line (header)
+                        
+                        # Initialize flag and line counter
+                        flagid=0
+                        lineNumberr=2  # Start from 2 since we skip the first line (header)
+
+                        # Check for the existence of the primary key in the data
+                        for pk in $existing_pk; do
+                            if [[ $pk == "$deleted_rowPK" ]]; then
+                                # Perform the deletion (skip the first line which is the header)
+                                sed -i "${lineNumberr}d" "$db_name/$display_table.txt"
+                                echo -e "${GREEN}Record with primary key '$deleted_rowPK' deleted successfully.${NC}"
+                                return
+                            fi
+                            lineNumberr=$((lineNumberr + 1))
+                        done
+
+                        # If the primary key was not found
+                        echo -e "${RED}Error: No record found with primary key '$deleted_rowPK'.${NC}"
+
+                    elif [[ "$checking" =~ ^[Nn]o$ ]]; then
+                        echo -e "${CYAN}Deletion aborted.${NC}"
+                    else
+                        echo -e "${RED}Error: Invalid input. Please enter 'yes' or 'no'.${NC}"
+                    fi
                 fi
-            done
-            elif [[ "no" =~ $checking ]]
-            then
-                    read -p "Press [Enter] to return to the menu..."
-                    # flagdel=1
-            else
-                # ASK FOR USER INPUT AGAIN
-                echo -e "${RED}Error: Please enter yes/no.${NC}"
-                #read -p "Are you sure you want to permanently delete this row? (yes/no):" checking
-            fi
-        fi
                 ;;
+                            
 
 	7)
 		# list the rows inside the specific table - DONE
