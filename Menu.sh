@@ -269,10 +269,11 @@ while true ;do
                 done
 
             
+                echo -e >> "$db_name/$insert_table.txt"
                 echo -e "${BG_BLUE}${WHITE}----------------------------------------------------------${NC}"
                 echo -e "${GREEN}Data inserted successfully into '$insert_table' table!${NC}"
-                echo "$insert_line" >> "$db_name/$insert_table.txt"
-                echo "" >> "$db_name/$insert_table.txt"
+                echo -n "$insert_line" >> "$db_name/$insert_table.txt"
+                # echo >> "$db_name/$insert_table.txt"
             else
                 echo -e "${RED}Error: Table '$insert_table' does not exist.${NC}"
             fi
@@ -334,20 +335,25 @@ fi
                     echo -e "\n"
 
                     read -p "Enter the primary key of the record you want to delete: " deleted_rowPK
-                    
                     # VALIDATION: Primary key can't be empty
                     while [[ -z "$deleted_rowPK" ]]; do
                         echo -e "${RED}Error: Primary key cannot be empty.${NC}"
                         read -p "Enter a valid primary key: " deleted_rowPK
                     done
 
-                    # VALIDATION: Ensure the primary key is numeric (if that's the required type)
+                    # VALIDATION: Ensure the PK in the PKs - DONE
                     while [[ ! "$deleted_rowPK" =~ ^[0-9]+$ ]]; do
                         echo -e "${RED}Error: Primary key must be a valid number.${NC}"
                         read -p "Enter a valid primary key: " deleted_rowPK
                     done
 
+        
                     read -p "Are you sure you want to permanently delete this row? (yes/no): " checking
+                    while ! [[ "$checking" =~ ^[Yy]es$ || "$checking" =~ ^[Nn]o$ ]]
+                    do
+                        echo -e "${RED}Error: Invalid input. Please enter 'yes' or 'no'.${NC}"
+                        read -p "Are you sure you want to permanently delete this row? (yes/no): " checking
+                    done
 
                     if [[ "$checking" =~ ^[Yy]es$ ]]; then
                         # Extract primary keys from the data, skipping the header (first line)
@@ -393,7 +399,7 @@ fi
 		then
 			echo -e "${RED}Table '$updated_table' does not exist.${NC}"
 		else
-			cat "$db_name/$insert_table.txt"
+			cat "$db_name/$updated_table.txt"
 			echo -e "\n"
 			read -p "Enter the primary key of the record you want to update: " inserted_pk
 
@@ -402,26 +408,24 @@ fi
                     echo -e "${RED}Error: primary key cannot be empty.${NC}"
                     read -p "Enter a valid primary key: " inserted_pk
             done
-		    # LOOP ON VALUES(in .txt) TO GET ID, CHECK IF id = $inserted_pk (if NOT --> does NOT exist)
-			# SKIP 1ST ROW TO PREVENT TAKING THE TITLES (start from 2nd row)
-			existing_pk=$(tail -n +2 "$db_name/$insert_table.txt" | cut -d: -f1)
+			existing_pk=$(tail -n +2 "$db_name/$updated_table.txt" | cut -d: -f1)
 			flag=0;
 			lineNum=1;
+            idflag=0;
 			for id in $existing_pk
 			do
-                idflag=0;
 				if [[ $flag -eq 0 ]]
 				then
 					lineNum=$((lineNum+1))
 				fi
-				if [[ $id =~ "$inserted_pk" ]]
+				if [[ $id = "$inserted_pk" ]]
 				then
 					flag=1
                     idflag=1;
 					echo -e "${GREEN}ID exists.${NC}"
 					read -p "Enter the column name you want to update: " inserted_column
 
-				# VALIDATION --> CHECK IF THE $inserted_column EXISTS
+				# VALIDATION --> CHECK IF THE $inserted_column EXISTS - DONE
 				while [[ -z $inserted_column ]]
 				do
                     		echo -e "${RED}Error: column name cannot be empty.${NC}"
@@ -431,60 +435,74 @@ fi
 				#loop on titles (1st line only),add a counter increment it
 				#check on $inserted_column when found
 				#cut using the counter
-				col_Titles=$(head -n 1 "$db_name/$insert_table.txt" | tr ':' ' ')
+				col_Titles=$(head -n 1 "$db_name/$updated_table.txt" | tr ':' ' ')
 				#echo $col_Titles
 				i=0
-				for title in $col_Titles
+                errorflag=0;
+				colUnav=0;
+                for title in $col_Titles
 				do
 					#echo $title
 					#echo $inserted_column
 					i=$((i+1));
-					if [[  $title =~ "$inserted_column" ]]
-					then	
+					if ! [[ $title = "$inserted_column" ]]
+                    then
+                        colUnav=1
+                        errorflag=0
 						#echo $i
-                        idflag=1;
+                    else
+                        colUnav=0;
+                        idflag=0;
 						break
 					fi
 				done
+                if [[ $colUnav == 1 ]]
+                then
+                    echo -e "${RED}Column name unavailable!${NC}" 
+                fi
 
 # get lineNumber by ID
 # loop over the line
 # & change $fieldNum to $updated_data
-				fieldNum=$i
-				old_data=$(cut -d ":" -f$fieldNum "$db_name/$insert_table.txt" | sed -n "${lineNum}p")
-				echo -e "${GREEN}data to be updated: '$old_data'${NC}"
+				if [[ $errorflag == 0 && $colUnav == 0 ]]
+                    then
+                        fieldNum=$i
+                        old_data=$(cut -d ":" -f$fieldNum "$db_name/$updated_table.txt" | sed -n "${lineNum}p")
+                        echo -e "${GREEN}data to be updated: '$old_data'${NC}"
 
-				read -p "Enter new data for '$inserted_column': " new_data
-				while [[ -z $new_data ]]
-				do
-					echo -e "${RED}Error: the new data cannot be empty.${NC}"
-                    read -p "Enter a valid value for the new data: " new_data
-				done
+                        read -p "Enter new data for '$inserted_column': " new_data
+                        while [[ -z $new_data ]]
+                        do
+                            echo -e "${RED}Error: the new data cannot be empty.${NC}"
+                            read -p "Enter a valid value for the new data: " new_data
+                        done
 
-                # if $fieldNum (value inside fn 1 for ex.) == old_data --> replace w/ new
-                new_fileData=$(awk -v old_data="$old_data" -v new_data="$new_data" -v fieldNum="$fieldNum" 'BEGIN{FS=OFS=":"} {if ($fieldNum == old_data) $fieldNum = new_data; print}' "$db_name/$insert_table.txt")
-				
-				# replace old_data with new_data (in the .txt file) (> overrides, >> adds new data after already exisiting ones)
-				echo -n "$new_fileData:" > "$db_name/$insert_table.txt"
-				echo -e "${GREEN}Data updated successfully.${NC}"
+                        # if $fieldNum (value inside fn 1 for ex.) == old_data --> replace w/ new
+                        new_fileData=$(awk -v old_data="$old_data" -v new_data="$new_data" -v fieldNum="$fieldNum" 'BEGIN{FS=OFS=":"} {if ($fieldNum == old_data) $fieldNum = new_data; print}' "$db_name/$updated_table.txt")
+                        
+                        # DELETE ALL COLONS AT THE END OF LAST LINE
+                        echo -n "$new_fileData:" > "$db_name/$updated_table.txt"
+                        sed -i '' '$s/:$//' "$db_name/$updated_table.txt" # removing the colon that was appended in each update!!
+                        echo -e "${GREEN}Data updated successfully.${NC}"
+                        idflag=1
+                fi
 # ID:Name:Age
 # 10:jana:23
 # 20:malak:50
 # 30:khaled:70::::::
 # WHEN I UPDATE, EXTRA : IS ADDED AT THE END EACH TIME 
-				fi
-            idflag=1
-			done
-            if [[ $idflag -eq 0 ]]
-                then
-                    echo -e "${RED}id '$inserted_pk' does not exist.${NC}"
-            fi		
-		fi
+                fi
+			    done
+        fi
+
+        if [[ $idflag -eq 0 ]]
+        then
+            echo -e "${RED}primary key '$inserted_pk' does not exist.${NC}"
+        fi        
 
 		# error for $inserted_pk --> if it doesn't exist - DONE
-		# validation for $inserted_column --> must be one of the columns available + has to be the EXACT SAME col_name
-		# validation for $updated_data --> must be the old value
-		# validation for $new_data --> must be of the SAME datatype + (show datatype for the user)
+		# validation for $inserted_column --> must be one of the columns available + has to be the EXACT SAME col_name - DONE
+		# validation for $new_data --> must be of the SAME datatype + (show datatype for the user) - NOT YETTTTTTT
 
 		;;			
 
