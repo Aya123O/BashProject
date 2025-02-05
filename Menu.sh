@@ -58,8 +58,12 @@ while true ;do
         read -p "Enter the name of the new table: " table_name
 
         # VALIDATION --> name with _ or - or spaces ONLY
-        if [[ -z "$table_name" ]]; then
+        if [[ -z "$table_name" ]]
+        then
             echo -e "${RED}Error: Table name cannot be empty.${NC}"
+        elif [[ "$table_name" =~ ^[0-9+_!@#%*():.\/$%-]+$  ]]
+        then
+            echo -e "${RED}Error: Table name cannot be begin with/contain special characters only${NC}"
         elif [ -f "$db_name/$table_name.txt" ]; then
             echo -e "${RED}Table '$table_name' already exists.${NC}"
         else
@@ -76,13 +80,13 @@ while true ;do
 
             read -p "Enter primary key column name: " pk_name
 		 # VALIDATION --> PK COL. NAME CAN NOT BE A NUMBER/SPECIAL CHAR ONLY (must be letters OR mix of letters & numbers) - DONE
-            while [[ -z "$pk_name" || "$pk_name" =~ ^[0-9+_!@#%*():.\/$%]+$ ]]
+            while [[ -z "$pk_name" || "$pk_name" =~ ^[0-9+_!@#%*():.\/$%-]+$ ]]
             do
                     if [[ -z "$pk_name" ]]
                     then
                     echo -e "${RED}Error: Primary key name cannot be empty.${NC}"
                     read -p "Enter a valid primary key column name: " pk_name
-                    elif [[ "$pk_name" =~ ^[0-9+_!@#%*():.\/$%]+$ ]]
+                    elif [[ "$pk_name" =~ ^[0-9+_!@#%*():.\/$%-]+$ ]]
                     then
                     echo -e "${RED}Error: Primary key name cannot contain special characters only.${NC}"
                     read -p "Enter a valid primary key column name: " pk_name
@@ -112,12 +116,12 @@ while true ;do
                 read -p "Enter column $((i+1)) name: " col_name
 
 		        # VALIDATION --> COL. NAME CAN'T BE A NUMBER (can be letters OR a mix of letters) - DONE
-                while [[ -z "$col_name" ||  $col_name =~ ^[0-9+_!@#%*():.\/$%]+$ ]]; do
+                while [[ -z "$col_name" ||  $col_name =~ ^[0-9+_!@#%*():.\/$%-]+$ ]]; do
                     if [[ -z "$col_name" ]]
                     then
                         echo -e "${RED}Error: Column name cannot be empty.${NC}"
                         read -p "Enter a valid column name: " col_name
-                    elif [[ "$col_name" =~ ^[0-9+_!@#%*():.\/$%]+$ ]]
+                    elif [[ "$col_name" =~ ^[0-9+_!@#%*():.\/$%-]+$ ]]
                     then
                         echo -e "${RED}Error: Column name cannot contain special characters/numbers only.${NC}"
                         read -p "Enter a valid column name: " col_name
@@ -156,7 +160,6 @@ while true ;do
             echo -e "${CYAN}--- Listing Tables ---${NC}"
         echo -e "${BG_GREEN}${WHITE}=======================${NC}"
 
-       
         echo -e "${CYAN}Available Tables:${NC}"
         for table in "$db_name"/*.txt; do
 
@@ -168,7 +171,7 @@ while true ;do
 
         read -p "Enter the name of the table to display data: " selected_table
 
-        if [[ ! -f "$db_name/$selected_table.txt" ]]; then
+        if [[ ! -f "^$db_name/$selected_table.txt$" ]]; then
             echo -e "${RED}Table '$selected_table' does not exist.${NC}"
         else
             echo -e "${CYAN}Displaying Data for Table '$selected_table':${NC}"
@@ -280,7 +283,7 @@ while true ;do
             ;;
 
     5)
-                         echo -e "${CYAN}--- Select Table ---${NC}"
+                         echo -e "${CYAN}--- Select From Table ---${NC}"
 echo -e "${BG_GREEN}${WHITE}===================${NC}"
 
 read -p "Enter the name of the table to display data: " selected_table
@@ -298,18 +301,21 @@ else
         read -p "Enter the ID to search for: " search_value
         found_row=$(grep -P "^$search_value:" "$db_name/$selected_table.txt")
         
-        if [[ -z "$found_row" ]]; then
+        if [[ -z "$search_value" ]]; then
+            # echo 2>/dev/null
+            # grep -P "^$search_value:" "$db_name/$selected_table.txt" 2 > /dev/null
+            # stm 2>&1 >/dev/null | grep ERROR > errors.txt 2>/dev/null
             echo -e "${RED}No row found with ID '$search_value'.${NC}"
         else
             echo "$found_row" | tr ':' ' '
         fi
    
        
-         elif [[ "$search_criteria" == "name" ]]; then
+        elif [[ "$search_criteria" == "name" ]]; then
         read -p "Enter the Name to search for: " search_value
         found_row=$(grep ":$search_value" "$db_name/$selected_table.txt")
         
-        if [[ -z "$found_row" ]]; then
+        if [[ -z "$search_value" ]]; then
             echo -e "${RED}No row found with Name '$search_value'.${NC}"
         else
             echo "$found_row" | tr ':' ' '
@@ -343,7 +349,7 @@ fi
 
                     # VALIDATION: Ensure the PK in the PKs - DONE
                     while [[ ! "$deleted_rowPK" =~ ^[0-9]+$ ]]; do
-                        echo -e "${RED}Error: Primary key must be a valid number.${NC}"
+                        echo -e "${RED}Error: Primary key must be valid.${NC}"
                         read -p "Enter a valid primary key: " deleted_rowPK
                     done
 
@@ -398,6 +404,7 @@ fi
 		if  [[ ! -f "$db_name/$updated_table.txt" ]]
 		then
 			echo -e "${RED}Table '$updated_table' does not exist.${NC}"
+            idflag=1
 		else
 			cat "$db_name/$updated_table.txt"
 			echo -e "\n"
@@ -408,6 +415,7 @@ fi
                     echo -e "${RED}Error: primary key cannot be empty.${NC}"
                     read -p "Enter a valid primary key: " inserted_pk
             done
+            # get PKs starting from line 2
 			existing_pk=$(tail -n +2 "$db_name/$updated_table.txt" | cut -d: -f1)
 			flag=0;
 			lineNum=1;
@@ -466,20 +474,81 @@ fi
 # & change $fieldNum to $updated_data
 				if [[ $errorflag == 0 && $colUnav == 0 ]]
                     then
-                        fieldNum=$i
-                        old_data=$(cut -d ":" -f$fieldNum "$db_name/$updated_table.txt" | sed -n "${lineNum}p")
-                        echo -e "${GREEN}data to be updated: '$old_data'${NC}"
 
+                    # check the field number of the $inserted_column --> it's fieldNum=$i
+                    # print the 2nd field of the line number (which will be = to the field number)
+                    # when I insert 'name' fa for ex. this 'name' is the 2nd field in the table
+                    # so it'll be the 2nd row in the .metadata
+                    # SO print the fieldNumber 2 of lineNumber $i according to the $inserted_column
+                        # echo $fieldNum
+                        # echo $columnDT
+                        fieldNum=$i
+                        # echo $i
+                        column_DT=$(awk -v field="$i" 'BEGIN{FS=OFS=":"} NR==field {print $2}' "$db_name/$updated_table.metaData.txt")
+                        old_data=$(cut -d ":" -f$fieldNum "$db_name/$updated_table.txt" | sed -n "${lineNum}p")
+                        # echo $fieldNum
+                        echo -e "${GREEN}data to be updated: ${WHITE}$old_data${NC}"
+                        echo -e "${YELLOW}Data type: ${WHITE}$column_DT${NC}"
                         read -p "Enter new data for '$inserted_column': " new_data
+
+                        # CONDITIONS FOR INT, STRING, BOOLEAN
+                        case $column_DT in
+                        int)
+                            # CHECK IF THE INSERTED PK IS ALREADY THERE OR NOT (don't repeat)
+                            existingPKs=$(tail -n +2 "$db_name/$updated_table.txt" | cut -d: -f1)  # Skip the first line (header)
+                            # echo "$existingPKs"
+                            flagPK=0
+                            for PK in $existingPKs
+                            do
+                                if [[ $PK -eq "$new_data" ]]
+                                then
+                                   flagPK=1
+                                #    echo "$flagPK" in if
+                                fi
+                            done
+                            # echo final flag is "$flagPK"
+                            if [[ $flagPK -eq 1 ]]
+                            then
+                                echo -e "${RED}Error: duplicate primary key.${NC}"
+                                return
+                            fi
+                            while ! [[ "$new_data" =~ ^[0-9]+$ ]]; do
+                                echo -e "${RED}Error: $inserted_column must be an integer.${NC}"
+                                read -p "Enter value for $inserted_column: " new_data
+                            done
+                            ;;
+                        string)
+                            while [[ "$new_data" =~ [^a-zA-Z0-9[:space:]] ]]; do
+                                echo -e "${RED}Error: $inserted_column must be a valid string.${NC}"
+                                read -p "Enter value for $inserted_column: " new_data
+                            done
+                            ;;
+                        boolean)
+                            while [[ "$new_data" != "true" && "$new_fileData" != "false" ]]; do
+                                echo -e "${RED}Error: $inserted_column must be 'true' or 'false'.${NC}"
+                                read -p "Enter value for $inserted_column: " new_data
+                            done
+                            ;;
+                        *)
+                            echo -e "${RED}Error: Unknown data type '$column_DT' for column '$inserted_column'.${NC}"
+                            exit 1
+                            ;;
+                        esac
                         while [[ -z $new_data ]]
                         do
                             echo -e "${RED}Error: the new data cannot be empty.${NC}"
                             read -p "Enter a valid value for the new data: " new_data
                         done
 
-                        # if $fieldNum (value inside fn 1 for ex.) == old_data --> replace w/ new
                         new_fileData=$(awk -v old_data="$old_data" -v new_data="$new_data" -v fieldNum="$fieldNum" 'BEGIN{FS=OFS=":"} {if ($fieldNum == old_data) $fieldNum = new_data; print}' "$db_name/$updated_table.txt")
-                        
+
+                        # if $fieldNum (value inside fn 1 for ex.) == old_data --> replace w/ new
+                        # CHECK THE COLUMN'S DATATYPE:
+                        # check the field num in "$db_name/$updated_table.txt"
+                        # the field num is the line num in "$db_directory/$db_name/db_metadata.txt"
+                        # display the 2nd field of this line
+                        # conditions on it (if int, if string, if boolean)
+
                         # DELETE ALL COLONS AT THE END OF LAST LINE
                         echo -n "$new_fileData:" > "$db_name/$updated_table.txt"
                         sed -i '' '$s/:$//' "$db_name/$updated_table.txt" # removing the colon that was appended in each update!!
@@ -592,6 +661,7 @@ create_database(){
 
 list_database(){
 	echo -e "${CYAN}--- Listing Databases ---${NC}"
+    # 2>/dev/null --> directs standars error to file /dev/null
 	[ "$(ls -A -d)" ] && ls -d */ 2>/dev/null || echo -e "${RED}No Databases Found.${NC}"
 	read -p "Press [Enter] to return to the menu..."
 }
