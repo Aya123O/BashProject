@@ -267,11 +267,12 @@ while true ;do
                     fi
                 done
 
-            
+                echo -e >> "$db_name/$insert_table.txt"
                 echo -e "${BG_BLUE}${WHITE}----------------------------------------------------------${NC}"
                 echo -e "${GREEN}Data inserted successfully into '$insert_table' table!${NC}"
-                echo "$insert_line" >> "$db_name/$insert_table.txt"
-                echo "" >> "$db_name/$insert_table.txt"
+                # echo "$insert_line" >> "$db_name/$insert_table.txt"
+                # echo "" >> "$db_name/$insert_table.txt"
+                echo -n "$insert_line" >> "$db_name/$insert_table.txt"
             else
                 echo -e "${RED}Error: Table '$insert_table' does not exist.${NC}"
             fi
@@ -608,7 +609,7 @@ list_database() {
     fi
 
     # Check if any directories exist (Databases) in the current working directory
-    dbs=$(ls -A -d */ 2>/dev/null)
+    dbs=$(ls -A -d * 2>/dev/null)
     
     if [ -z "$dbs" ]; then
         echo -e "${RED}No Databases Found.${NC}"
@@ -655,6 +656,11 @@ drop_database(){
     echo -e "${CYAN}===============================${NC}"
 
     read -p "Enter the name of the database you want to drop: " name
+    while [[ -z $name ]]
+    do
+        echo -e "${RED}Database name cannot be empty${NC}"
+        read -p "Enter a valid database name: " name
+    done
     if [ -d "$name" ]; then
         read -p "Are you sure you want to permanently delete the database '$name'? (yes/no): " check
         if [[ "yes" =~ $check ]]; then
