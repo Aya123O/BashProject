@@ -1,0 +1,4 @@
+id:int:PK
+t:int
+t:int
+t3:int
