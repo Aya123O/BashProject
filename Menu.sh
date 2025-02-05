@@ -392,8 +392,9 @@ fi
 		if  [[ ! -f "$db_name/$updated_table.txt" ]]
 		then
 			echo -e "${RED}Table '$updated_table' does not exist.${NC}"
+            idflag=1
 		else
-			cat "$db_name/$insert_table.txt"
+			cat "$db_name/$updated_table.txt"
 			echo -e "\n"
 			read -p "Enter the primary key of the record you want to update: " inserted_pk
 
@@ -402,26 +403,25 @@ fi
                     echo -e "${RED}Error: primary key cannot be empty.${NC}"
                     read -p "Enter a valid primary key: " inserted_pk
             done
-		    # LOOP ON VALUES(in .txt) TO GET ID, CHECK IF id = $inserted_pk (if NOT --> does NOT exist)
-			# SKIP 1ST ROW TO PREVENT TAKING THE TITLES (start from 2nd row)
-			existing_pk=$(tail -n +2 "$db_name/$insert_table.txt" | cut -d: -f1)
+            # get PKs starting from line 2
+			existing_pk=$(tail -n +2 "$db_name/$updated_table.txt" | cut -d: -f1)
 			flag=0;
 			lineNum=1;
+            idflag=0;
 			for id in $existing_pk
 			do
-                idflag=0;
 				if [[ $flag -eq 0 ]]
 				then
 					lineNum=$((lineNum+1))
 				fi
-				if [[ $id =~ "$inserted_pk" ]]
+				if [[ $id = "$inserted_pk" ]]
 				then
 					flag=1
                     idflag=1;
 					echo -e "${GREEN}ID exists.${NC}"
 					read -p "Enter the column name you want to update: " inserted_column
 
-				# VALIDATION --> CHECK IF THE $inserted_column EXISTS
+				# VALIDATION --> CHECK IF THE $inserted_column EXISTS - DONE
 				while [[ -z $inserted_column ]]
 				do
                     		echo -e "${RED}Error: column name cannot be empty.${NC}"
@@ -431,62 +431,138 @@ fi
 				#loop on titles (1st line only),add a counter increment it
 				#check on $inserted_column when found
 				#cut using the counter
-				col_Titles=$(head -n 1 "$db_name/$insert_table.txt" | tr ':' ' ')
+				col_Titles=$(head -n 1 "$db_name/$updated_table.txt" | tr ':' ' ')
 				#echo $col_Titles
 				i=0
-				for title in $col_Titles
+                errorflag=0;
+				colUnav=0;
+                for title in $col_Titles
 				do
 					#echo $title
 					#echo $inserted_column
 					i=$((i+1));
-					if [[  $title =~ "$inserted_column" ]]
-					then	
+					if ! [[ $title = "$inserted_column" ]]
+                    then
+                        colUnav=1
+                        errorflag=0
 						#echo $i
-                        idflag=1;
+                    else
+                        colUnav=0;
+                        idflag=0;
 						break
 					fi
 				done
+                if [[ $colUnav == 1 ]]
+                then
+                    echo -e "${RED}Column name unavailable!${NC}" 
+                fi
 
 # get lineNumber by ID
 # loop over the line
 # & change $fieldNum to $updated_data
-				fieldNum=$i
-				old_data=$(cut -d ":" -f$fieldNum "$db_name/$insert_table.txt" | sed -n "${lineNum}p")
-				echo -e "${GREEN}data to be updated: '$old_data'${NC}"
+				if [[ $errorflag == 0 && $colUnav == 0 ]]
+                    then
 
-				read -p "Enter new data for '$inserted_column': " new_data
-				while [[ -z $new_data ]]
-				do
-					echo -e "${RED}Error: the new data cannot be empty.${NC}"
-                    read -p "Enter a valid value for the new data: " new_data
-				done
+                    # check the field number of the $inserted_column --> it's fieldNum=$i
+                    # print the 2nd field of the line number (which will be = to the field number)
+                    # when I insert 'name' fa for ex. this 'name' is the 2nd field in the table
+                    # so it'll be the 2nd row in the .metadata
+                    # SO print the fieldNumber 2 of lineNumber $i according to the $inserted_column
+                        # echo $fieldNum
+                        # echo $columnDT
+                        fieldNum=$i
+                        # echo $i
+                        column_DT=$(awk -v field="$i" 'BEGIN{FS=OFS=":"} NR==field {print $2}' "$db_name/$updated_table.metaData.txt")
+                        old_data=$(cut -d ":" -f$fieldNum "$db_name/$updated_table.txt" | sed -n "${lineNum}p")
+                        # echo $fieldNum
+                        echo -e "${GREEN}data to be updated: ${WHITE}$old_data${NC}"
+                        echo -e "${YELLOW}Data type: ${WHITE}$column_DT${NC}"
+                        read -p "Enter new data for '$inserted_column': " new_data
 
-                # if $fieldNum (value inside fn 1 for ex.) == old_data --> replace w/ new
-                new_fileData=$(awk -v old_data="$old_data" -v new_data="$new_data" -v fieldNum="$fieldNum" 'BEGIN{FS=OFS=":"} {if ($fieldNum == old_data) $fieldNum = new_data; print}' "$db_name/$insert_table.txt")
-				
-				# replace old_data with new_data (in the .txt file) (> overrides, >> adds new data after already exisiting ones)
-				echo -n "$new_fileData:" > "$db_name/$insert_table.txt"
-				echo -e "${GREEN}Data updated successfully.${NC}"
+                        # CONDITIONS FOR INT, STRING, BOOLEAN
+                        case $column_DT in
+                        int)
+                            # CHECK IF THE INSERTED PK IS ALREADY THERE OR NOT (don't repeat)
+                            existingPKs=$(tail -n +2 "$db_name/$updated_table.txt" | cut -d: -f1)  # Skip the first line (header)
+                            # echo "$existingPKs"
+                            flagPK=0
+                            for PK in $existingPKs
+                            do
+                                if [[ $PK -eq "$new_data" ]]
+                                then
+                                   flagPK=1
+                                #    echo "$flagPK" in if
+                                fi
+                            done
+                            # echo final flag is "$flagPK"
+                            if [[ $flagPK -eq 1 ]]
+                            then
+                                echo -e "${RED}Error: duplicate primary key.${NC}"
+                                return
+                            fi
+                            while ! [[ "$new_data" =~ ^[0-9]+$ ]]; do
+                                echo -e "${RED}Error: $inserted_column must be an integer.${NC}"
+                                read -p "Enter value for $inserted_column: " new_data
+                            done
+                            ;;
+                        string)
+                            while [[ "$new_data" =~ [^a-zA-Z0-9[:space:]] ]]; do
+                                echo -e "${RED}Error: $inserted_column must be a valid string.${NC}"
+                                read -p "Enter value for $inserted_column: " new_data
+                            done
+                            ;;
+                        boolean)
+                            while [[ "$new_data" != "true" && "$new_fileData" != "false" ]]; do
+                                echo -e "${RED}Error: $inserted_column must be 'true' or 'false'.${NC}"
+                                read -p "Enter value for $inserted_column: " new_data
+                            done
+                            ;;
+                        *)
+                            echo -e "${RED}Error: Unknown data type '$column_DT' for column '$inserted_column'.${NC}"
+                            exit 1
+                            ;;
+                        esac
+                        while [[ -z $new_data ]]
+                        do
+                            echo -e "${RED}Error: the new data cannot be empty.${NC}"
+                            read -p "Enter a valid value for the new data: " new_data
+                        done
+
+                        new_fileData=$(awk -v old_data="$old_data" -v new_data="$new_data" -v fieldNum="$fieldNum" 'BEGIN{FS=OFS=":"} {if ($fieldNum == old_data) $fieldNum = new_data; print}' "$db_name/$updated_table.txt")
+
+                        # if $fieldNum (value inside fn 1 for ex.) == old_data --> replace w/ new
+                        # CHECK THE COLUMN'S DATATYPE:
+                        # check the field num in "$db_name/$updated_table.txt"
+                        # the field num is the line num in "$db_directory/$db_name/db_metadata.txt"
+                        # display the 2nd field of this line
+                        # conditions on it (if int, if string, if boolean)
+
+                        # DELETE ALL COLONS AT THE END OF LAST LINE
+                        echo -n "$new_fileData:" > "$db_name/$updated_table.txt"
+                        sed -i '' '$s/:$//' "$db_name/$updated_table.txt" # removing the colon that was appended in each update!!
+                        echo -e "${GREEN}Data updated successfully.${NC}"
+                        idflag=1
+                fi
 # ID:Name:Age
 # 10:jana:23
 # 20:malak:50
 # 30:khaled:70::::::
 # WHEN I UPDATE, EXTRA : IS ADDED AT THE END EACH TIME 
-				fi
-            idflag=1
-			done
-            if [[ $idflag -eq 0 ]]
-                then
-                    echo -e "${RED}id '$inserted_pk' does not exist.${NC}"
-            fi		
-		fi
+                fi
+			    done
+        fi
+
+        if [[ $idflag -eq 0 ]]
+        then
+            echo -e "${RED}primary key '$inserted_pk' does not exist.${NC}"
+        fi        
 
 		# error for $inserted_pk --> if it doesn't exist - DONE
-		# validation for $inserted_column --> must be one of the columns available + has to be the EXACT SAME col_name
-		# validation for $updated_data --> must be the old value
-		# validation for $new_data --> must be of the SAME datatype + (show datatype for the user)
+		# validation for $inserted_column --> must be one of the columns available + has to be the EXACT SAME col_name - DONE
+		# validation for $new_data --> must be of the SAME datatype + (show datatype for the user) - NOT YETTTTTTT
 
-		;;			
+		;;		
+
 
         0)
                 echo "Exiting the program..."
